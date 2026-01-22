@@ -52,3 +52,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: docker system prune -af
+
+      - name: Cleanup workspace
+        if: always()
+        run: rm -rf "$GITHUB_WORKSPACE"/* 
