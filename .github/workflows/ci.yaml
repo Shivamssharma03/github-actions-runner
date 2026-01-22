@@ -1,0 +1,54 @@
+name: React CI - Self Hosted Runner
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: [self-hosted, docker]
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build React app
+      - name: Build app
+        run: npm run build
+
+      # 5. Login to Docker Hub
+      - name: Docker Hub Login
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | \
+          docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      # 6. Build Docker image
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/react-vite-test:${{ github.sha }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/react-vite-test:latest \
+            .
+
+      # 7. Push Docker image
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/react-vite-test:${{ github.sha }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/react-vite-test:latest
+
+      # 8. Cleanup runner (VERY IMPORTANT)
+      - name: Cleanup
+        if: always()
+        run: docker system prune -af
